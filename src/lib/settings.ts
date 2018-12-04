@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-import {JsonLdGraphItem, LD_ID, LD_LABEL} from './jsonld';
+let lang = 'en';
+let verbose = false;
 
-export function toScopedName(item: JsonLdGraphItem): string {
-  const label = item[LD_LABEL];
-  if (!label) {
-    throw new Error(`Label Required for ${item[LD_ID]}`);
-  }
-  if (typeof label === 'string') return label;
-  return label['@value'];
+export function PreferredLanguage(): string {
+  return lang;
 }
 
-export function toEnumMemberName(item: JsonLdGraphItem): string {
-  return toScopedName(item).replace(/[^A-Za-z0-9_]/g, '_');
+export function IsVerbose(): boolean {
+  return verbose;
+}
+
+export function SetupOptions(opts: {lang: string, verbose: boolean}) {
+  lang = opts.lang;
+  verbose = opts.verbose;
 }

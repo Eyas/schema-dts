@@ -16,21 +16,13 @@
 import {createEnumDeclaration, createEnumMember, createIntersectionTypeNode, createKeywordTypeNode, createModifiersFromModifierFlags, createParenthesizedType, createStringLiteral, createTypeAliasDeclaration, createTypeLiteralNode, createTypeReferenceNode, createUnionTypeNode, EnumDeclaration, ModifierFlags, Statement, SyntaxKind, TypeAliasDeclaration, TypeNode} from 'typescript';
 
 import {withComments} from './comments';
-import {toClassName, toEnumName, toScopedName} from './names';
-import {Property, PropertyType} from './toProperty';
-import {ObjectPredicate, TObject, TPredicate, TSubject} from './triple';
-import {SchemaObject, SchemaString} from './types';
-import {GetComment, GetSubClassOf, GetType, IsClassType, IsDataType, IsPropertyType, TTypeName} from './wellKnown';
+import {JsonLdGraphItem, LD_COMMENT, LD_ID, LD_LABEL, LD_TYPES} from './jsonld';
+import {toEnumMemberName, toScopedName} from './names';
+import {IsVerbose, PreferredLanguage} from './settings';
+import {Property, PropertyType, StringLiteralType} from './toProperty';
+import {GetComments, GetSubClassOf, GetTypes, IsClassType, IsDataType, IsPropertyType} from './wellKnown';
 
 export type ClassMap = Map<string, Class>;
-
-export interface BySubject {
-  Subject: TSubject;
-  values: ReadonlyArray<ObjectPredicate>;
-}
-export interface TypedTopic extends BySubject {
-  types: ReadonlyArray<TTypeName>;
-}
 
 function arrayOf<T>(...args: Array<T|undefined|null>): T[] {
   return args.filter(
@@ -60,54 +52,48 @@ export class Class {
   properties() {
     return this.isLeaf() ?
         [
-          new Property(
-              '@type',
-              new PropertyType(
-                  this.subject,
-                  new SchemaString(
-                      toScopedName(this.subject), /*language=*/undefined)),
-              ),
+          new Property('@type', new StringLiteralType(toScopedName(this.item))),
           ...this._props
         ] :
         this._props;
   }
 
   protected baseName() {
-    return toClassName(this.subject) + 'Base';
+    return toScopedName(this.item) + 'Base';
   }
   private enumName() {
-    return toClassName(this.subject) + 'Enum';
+    return toScopedName(this.item) + 'Enum';
   }
   private className() {
-    return toClassName(this.subject);
+    return toScopedName(this.item);
   }
 
-  constructor(readonly subject: TSubject) {}
-  add(value: {Predicate: TPredicate; Object: TObject},
-      classMap: ClassMap): boolean {
-    const c = GetComment(value);
-    if (c) {
-      if (this.comment) {
-        console.error(`Duplicate comments provided on class ${
-            this.subject.toString()}. It will be overwritten.`);
-      }
-      this.comment = c.comment;
-      return true;
+  constructor(readonly item: JsonLdGraphItem) {}
+  init(classMap: ClassMap) {
+    const comments = GetComments(this.item, PreferredLanguage());
+    if (comments.length === 0 && IsVerbose()) {
+      console.error(`Class ${this.item[LD_ID]} has no comments.`);
+    } else if (comments.length > 1) {
+      console.error(`Duplicate comments provided on class ${
+          this.item[LD_ID]}. It will be overwritten.`);
     }
-    const s = GetSubClassOf(value);
-    if (s) {
-      const parentClass = classMap.get(s.subClassOf.toString());
+    if (comments.length > 0) {
+      this.comment = comments[0];
+    }
+
+    const parents = GetSubClassOf(this.item);
+    for (const parentId of parents) {
+      const parentClass = classMap.get(parentId);
+
       if (parentClass) {
         this.parents.push(parentClass);
         parentClass.children.push(this);
       } else {
-        throw new Error(`Couldn't find parent of ${this.subject.toString()}, ${
-            s.subClassOf.toString()}`);
+        throw new Error(
+            `Couldn't find parent of ${this.item[LD_ID]}, ${parentId}`);
       }
       return true;
     }
-
-    if (GetType(value)) return true;  // We used types already.
 
     return false;
   }
@@ -209,8 +195,13 @@ export class Class {
 export class Builtin extends Class {
   constructor(
       private readonly name: string, private readonly equivTo: string,
-      private readonly doc?: string) {
-    super(new SchemaObject(name, /*layer=*/undefined));
+      private readonly doc: string) {
+    super({
+      [LD_ID]: `http://schema.org/${name}`,
+      [LD_TYPES]: '',
+      [LD_LABEL]: name,
+      [LD_COMMENT]: doc,
+    });
   }
 
   toNode() {
@@ -234,9 +225,9 @@ export class EnumValue {
   readonly INSTANCE = 'EnumValue';
 
   private comment?: string;
-  constructor(private readonly value: TSubject) {}
+  constructor(private readonly item: JsonLdGraphItem) {}
 
-  add(value: ObjectPredicate, map: ClassMap) {
+  init(map: ClassMap) {
     // First, "Type" containment.
     // A Topic can have multiple types. So the triple we're adding now could
     // either be:
@@ -249,66 +240,75 @@ export class EnumValue {
     //       MedicalProcedureType (schema.org/MedicalProcedureType) enum.
     //       Therefore, an Enum will contain two TTypeName ObjectPredicates:
     //       one of Type=Class, and another of Type=MedicalProcedureType.
-    const type = GetType(value);
-    if (type) {
-      if (IsClassType(type) || IsDataType(type)) return true;
+    const types = GetTypes(this.item);
+    for (const type of types) {
+      if (IsClassType(type) || IsDataType(type)) continue;
 
-      const enumObject = map.get(type.toString());
+      const enumObject = map.get(type);
       if (!enumObject) {
-        throw new Error(`Couldn't find ${type.toString()} in classes.`);
+        throw new Error(`Couldn't find ${type} in classes.`);
       }
       enumObject.addEnum(this);
       return true;
     }
 
     // Comment.
-    const comment = GetComment(value);
-    if (comment) {
-      if (this.comment) {
-        throw new Error(`Attempt to add comment on ${
-            this.value.toString()} enum but one already exists.`);
-      }
-      this.comment = comment.comment;
-      return true;
+    const comments = GetComments(this.item, PreferredLanguage());
+    if (comments.length === 0 && IsVerbose()) {
+      console.error(`No comments found in ${this.item[LD_ID]}`);
+    } else if (comments.length > 1) {
+      console.error(`Duplicate comments found in ${this.item[LD_ID]}`);
     }
-
-    return false;
+    this.comment = comments[0];
   }
 
   toNode() {
     return withComments(
         this.comment,
         createEnumMember(
-            toEnumName(this.value),
-            createStringLiteral(this.value.toString())));
+            toEnumMemberName(this.item),
+            createStringLiteral(this.item[LD_ID])));
   }
-}
-
-export function toClass(cls: Class, group: BySubject, map: ClassMap): Class {
-  const rest: ObjectPredicate[] = [];
-  for (const value of group.values) {
-    const added = cls.add(value, map);
-    if (!added) rest.push(value);
-  }
-  return cls;
 }
 
 const wellKnownTypes = [
-  new Builtin('Text', 'string'), new Builtin('Number', 'number'),
+  new Builtin('Text', 'string', 'Data type: Text.'),
+  new Builtin('Number', 'number', 'Data type: Number.'),
   new Builtin(
       'Time', 'string',
       'DateTime represented in string, e.g. 2017-01-04T17:10:00-05:00.'),
-  new Builtin('Boolean', 'boolean')
+  new Builtin(
+      'Date', 'string',
+      'A date value in <a href=\"http://en.wikipedia.org/wiki/ISO_8601\">ISO 8601 date format</a>.'),
+  new Builtin(
+      'DateTime', 'string',
+      'A combination of date and time of day in the form [-]CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm] (see Chapter 5.4 of ISO 8601).'),
+  new Builtin('Boolean', 'boolean', 'Boolean: True or False.'),
 ];
 
-function ForwardDeclareClasses(topics: ReadonlyArray<TypedTopic>): ClassMap {
+function IsClass(item: JsonLdGraphItem): boolean {
+  const types = GetTypes(item);
+  // Skip all Native Types. These are covered in wellKnownTypes.
+  if (types.some(IsDataType)) return false;
+
+  // Skip the DataType Type itself.
+  if (IsDataType(item[LD_ID])) return false;
+
+  // Skip anything that isn't a class.
+  if (!types.some(IsClassType)) return false;
+
+  return true;
+}
+
+function ForwardDeclareClasses(items: ReadonlyArray<JsonLdGraphItem>):
+    ClassMap {
   const classes = new Map<string, Class>();
   for (const wk of wellKnownTypes) {
-    classes.set(wk.subject.toString(), wk);
+    classes.set(wk.item[LD_ID], wk);
   }
-  for (const topic of topics) {
-    if (!topic.types.some(IsClassType)) continue;
-    classes.set(topic.Subject.toString(), new Class(topic.Subject));
+  for (const item of items) {
+    if (!IsClass(item)) continue;
+    classes.set(item[LD_ID], new Class(item));
   }
 
   if (classes.size === 0) {
@@ -318,28 +318,31 @@ function ForwardDeclareClasses(topics: ReadonlyArray<TypedTopic>): ClassMap {
   return classes;
 }
 
-function BuildClasses(topics: ReadonlyArray<TypedTopic>, classes: ClassMap) {
-  for (const topic of topics) {
-    if (!topic.types.some(IsClassType)) continue;
+function BuildClasses(
+    items: ReadonlyArray<JsonLdGraphItem>, classes: ClassMap) {
+  for (const item of items) {
+    if (!IsClass(item)) continue;
+    const cls = classes.get(item[LD_ID]);
 
-    const cls = classes.get(topic.Subject.toString());
     if (!cls) {
-      throw new Error(`Class ${
-          topic.Subject.toString()} should have been forward declared.`);
+      throw new Error(
+          `Class ${item[LD_ID]} should have been forward declared.`);
     }
-    toClass(cls, topic, classes);
+    cls.init(classes);
   }
 }
 
-export function ProcessClasses(topics: ReadonlyArray<TypedTopic>): ClassMap {
-  const classes = ForwardDeclareClasses(topics);
-  BuildClasses(topics, classes);
+export function ProcessClasses(items: ReadonlyArray<JsonLdGraphItem>):
+    ClassMap {
+  const classes = ForwardDeclareClasses(items);
+  BuildClasses(items, classes);
   return classes;
 }
 
-export function FindProperties(topics: ReadonlyArray<TypedTopic>):
-    ReadonlyArray<BySubject> {
-  const properties = topics.filter(topic => topic.types.some(IsPropertyType));
+export function FindProperties(topics: ReadonlyArray<JsonLdGraphItem>):
+    ReadonlyArray<JsonLdGraphItem> {
+  const properties =
+      topics.filter(topic => GetTypes(topic).some(IsPropertyType));
   if (properties.length === 0) {
     throw new Error('Unexpected: Property Topics to exist.');
   }

@@ -13,96 +13,62 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {ObjectPredicate, TPredicate, TSubject} from './triple';
-import {RdfSchema, RdfSyntax, SchemaObject, SchemaSource, W3CNameSpaced} from './types';
 
-export function GetComment(value: ObjectPredicate): {comment: string}|null {
-  if (value.Predicate.type === 'RdfSchema' &&
-      value.Predicate.hash === 'comment') {
-    if (value.Object.type === 'SchemaString') {
-      return {comment: value.Object.value};
+import {JsonLdGraphItem, LD_COMMENT, LD_ID, LD_SUBCLASS_OF, LD_TYPES, ToArray} from './jsonld';
+
+export function GetComments(
+    item: JsonLdGraphItem, preferredLanguage: string): ReadonlyArray<string> {
+  const comments = ToArray(item[LD_COMMENT]);
+
+  return comments
+      .map(c => {
+        if (typeof c === 'string') return c;
+
+        if (c['@language'] === preferredLanguage) {
+          return c['@value'];
+        }
+
+        return undefined;
+      })
+      .filter((c): c is string => !!c);
+}
+
+export function GetSubClassOf(item: JsonLdGraphItem): ReadonlyArray<string> {
+  return ToArray(item[LD_SUBCLASS_OF]).map(i => i[LD_ID]);
+}
+
+export function GetTypes(item: JsonLdGraphItem): ReadonlyArray<string> {
+  // Some published schema includes local files, unbelievably. Simply skip
+  // those.
+  if (item[LD_ID].startsWith('file:')) return [];
+
+  const types = item[LD_TYPES];
+  if (Array.isArray(types)) {
+    if (types.length === 0) {
+      throw new Error(`Empty type found for item ${item[LD_ID]}`);
     }
-    console.error(
-        `Unexpected Comment predicate with non-string object: ${value}.`);
-  }
-  return null;
-}
-
-export type TParentClassName = SchemaObject|SchemaSource|W3CNameSpaced;
-export function GetSubClassOf(value: ObjectPredicate):
-    {subClassOf: TParentClassName}|null {
-  if (value.Predicate.type === 'RdfSchema' &&
-      value.Predicate.hash === 'subClassOf') {
-    if (value.Object.type === 'RdfSchema' || value.Object.type === 'RdfSntax' ||
-        value.Object.type === 'SchemaString' || value.Object.type === 'Rdfs' ||
-        value.Object.type === 'WikidataConst' ||
-        value.Object.type === 'OneOffClass') {
-      console.error(
-          `Unexpected object for predicate 'subClassOf': ${value.Object}.`);
-      return null;
-    }
-    return {subClassOf: value.Object};
-  }
-  return null;
-}
-
-export function IsDataType(t: TTypeName): boolean {
-  switch (t.type) {
-    case 'SchemaObject':
-      return t.name === 'DataType';
-    default:
-      return false;
-  }
-}
-
-export function IsDomainIncludes(value: TPredicate): boolean {
-  return value.type === 'SchemaObject' && value.name === 'domainIncludes';
-}
-export function IsRangeIncludes(value: TPredicate): boolean {
-  return value.type === 'SchemaObject' && value.name === 'rangeIncludes';
-}
-
-export type TTypeName = RdfSchema|RdfSyntax|SchemaObject;
-export function GetType(value: ObjectPredicate): TTypeName|null {
-  if (value.Predicate.type === 'RdfSntax' && value.Predicate.hash === 'type') {
-    if (value.Object.type === 'RdfSchema' || value.Object.type === 'RdfSntax' ||
-        value.Object.type === 'SchemaObject') {
-      return value.Object;
-    }
-    throw new Error(`Unexpected type ${value.Object}`);
-  }
-  return null;
-}
-
-export function GetTypes(key: TSubject, values: ReadonlyArray<ObjectPredicate>):
-    ReadonlyArray<TTypeName> {
-  const types = values.map(GetType).filter((t): t is TTypeName => !!t);
-
-  if (types.length === 0) {
-    throw new Error(
-        `No type found for Subject ${key.toString()}. Triples include:\n${
-            values.map(v => `${v.Predicate.toString()} ${v.Object.toString()}`)
-                .join('\n')}`);
+    return types;
   }
 
-  return types;
-}
-
-export function EnsureSubject(type: TTypeName): TSubject {
-  if (type.type === 'RdfSntax' || type.type === 'RdfSchema') {
-    throw new Error(`Expected ${type.toString()} to be a Subject.`);
+  if (typeof types === 'string') {
+    return [types];
   }
-  return type;
+
+  throw new Error(`No type found for item ${item[LD_ID]}.`);
 }
 
-export function IsClassType(type: TTypeName): boolean {
-  return type.type === 'RdfSchema' && type.hash === 'Class';
+export function IsClassType(type: string): boolean {
+  return type === 'rdfs:Class';
 }
-export function IsPropertyType(type: TTypeName): boolean {
-  return type.type === 'RdfSntax' && type.hash === 'Property';
+export function IsPropertyType(type: string): boolean {
+  return type === 'rdf:Property';
 }
 
-export function HasEnumType(types: ReadonlyArray<TTypeName>): boolean {
+export function IsDataType(type: string): boolean {
+  return type === 'http://schema.org/DataType';
+}
+
+export function HasEnumType(types: ReadonlyArray<string>): boolean {
   for (const type of types) {
     // Skip well-known types.
     if (IsClassType(type) || IsPropertyType(type) || IsDataType(type)) continue;

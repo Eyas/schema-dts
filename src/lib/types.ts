@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
 export class SchemaObject {
   readonly type = 'SchemaObject';
   constructor(readonly name: string, readonly layer: string|undefined) {}
@@ -173,3 +174,4 @@ export class OneOffClassName {
     return null;
   }
 }
+*/

@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {OneOffClassName, Rdfs, RdfSchema, RdfSyntax, SchemaObject, SchemaSource, SchemaString, W3CNameSpaced, W3cSkos, WikidataConst} from './types';
+/*
+import {OneOffClassName, Rdfs, RdfSchema, RdfSyntax, SchemaObject, SchemaSource,
+SchemaString, W3CNameSpaced, W3cSkos, WikidataConst} from './types';
 
 export interface Triple {
   readonly Subject: SchemaObject|SchemaSource|W3CNameSpaced|OneOffClassName;
@@ -36,3 +38,4 @@ export function toString(o: Triple|ObjectPredicate): string {
           o.Object.toString()} }` :
       `{ Predicate: ${o.Predicate.toString()} Object: ${o.Object.toString()}}`;
 }
+*/

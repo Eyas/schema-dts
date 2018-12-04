@@ -13,44 +13,63 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {createArrayTypeNode, createKeywordTypeNode, createPropertySignature, createStringLiteral, createToken, createTypeReferenceNode, createUnionTypeNode, PropertySignature, SyntaxKind, TypeNode} from 'typescript';
+import {createArrayTypeNode, createKeywordTypeNode, createLiteralTypeNode, createPropertySignature, createStringLiteral, createToken, createTypeLiteralNode, createTypeReferenceNode, createUnionTypeNode, PropertySignature, SyntaxKind, TypeNode} from 'typescript';
 
 import {withComments} from './comments';
-import {toTypeName} from './names';
-import {TObject, TPredicate, TSubject} from './triple';
-import {GetComment, GetType, IsRangeIncludes} from './wellKnown';
+import {JsonLdGraphItem, LD_DOMAIN_INCLUDES, LD_ID, LD_RANGE_INCLUDES, ToArray} from './jsonld';
+import {toScopedName} from './names';
+import {PreferredLanguage} from './settings';
+import {Class, ClassMap} from './toClass';
+// import {TObject, TPredicate, TSubject} from './triple';
+import {GetComments, GetTypes} from './wellKnown';
 
 export class PropertyType {
+  readonly INSTANCE = 'PropertyType';
+
   comment?: string;
-  readonly types: TObject[] = [];
-  constructor(readonly subect: TSubject, object?: TObject) {
-    if (object) this.types.push(object);
-  }
+  readonly types: Class[] = [];
+  constructor(readonly item: JsonLdGraphItem) {}
 
-  add(value: {Predicate: TPredicate; Object: TObject}): boolean {
-    const c = GetComment(value);
-    if (c) {
-      if (this.comment) {
-        console.error(`Duplicate comments provided on property ${
-            this.subect.toString()}. It will be overwritten.`);
-      }
-      this.comment = c.comment;
-      return true;
+  init(map: ClassMap): boolean {
+    const comments = GetComments(this.item, PreferredLanguage());
+    if (comments.length > 1 || (this.comment && comments.length > 0)) {
+      console.error(
+          `Duplicate comments provided on property ${this.item[LD_ID]}.`);
     }
-    if (GetType(value)) return true;  // We used types already.
+    if (comments.length > 0) {
+      this.comment = comments[0];
+    }
 
-    if (IsRangeIncludes(value.Predicate)) {
-      this.types.push(value.Object);
-      return true;
+    const rangeIncludes = ToArray(this.item[LD_RANGE_INCLUDES]);
+    this.types.push(...rangeIncludes.map(ref => {
+      const cls = map.get(ref[LD_ID]);
+      if (!cls) throw new Error(`Class with ID ${ref[LD_ID]} not found.`);
+      return cls;
+    }));
+
+    const domainIncludes = ToArray(this.item[LD_DOMAIN_INCLUDES]);
+    for (const domain of domainIncludes) {
+      const cls = map.get(domain[LD_ID]);
+      if (!cls) {
+        throw new Error(
+            `Could not find class for ${this.item[LD_ID]}, ${domain[LD_ID]}.`);
+      }
+      cls.addProp(new Property(toScopedName(this.item), this));
     }
 
     return false;
   }
 }
+export class StringLiteralType {
+  readonly INSTANCE = 'StringLiteralType';
+
+  constructor(readonly value: string) {}
+}
 
 export class Property {
   constructor(
-      private readonly key: string, private readonly type: PropertyType) {}
+      private readonly key: string,
+      private readonly type: PropertyType|StringLiteralType) {}
 
   required() {
     return this.key.startsWith('@');
@@ -64,8 +83,12 @@ export class Property {
   }
 
   private scalarTypeNode() {
+    if (this.type instanceof StringLiteralType) {
+      return createLiteralTypeNode(createStringLiteral(this.type.value));
+    }
+
     const typeNodes = this.type.types.map(
-        type => createTypeReferenceNode(toTypeName(type), []));
+        type => createTypeReferenceNode(toScopedName(type.item), []));
     switch (typeNodes.length) {
       case 0:
         return createKeywordTypeNode(SyntaxKind.NeverKeyword);
@@ -78,7 +101,7 @@ export class Property {
 
   toNode(): PropertySignature {
     return withComments(
-        this.type.comment,
+        (this.type instanceof PropertyType) ? this.type.comment : undefined,
         createPropertySignature(
             /* modifiers= */[],
             createStringLiteral(this.key),

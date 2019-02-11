@@ -19,7 +19,7 @@ import {BlankNode, Rdfs, SchemaString, UrlNode} from './types';
 export interface Triple {
   readonly Subject: UrlNode|BlankNode;
   readonly Predicate: UrlNode;
-  readonly Object: UrlNode|SchemaString|Rdfs;
+  readonly Object: UrlNode|BlankNode|SchemaString|Rdfs;
 }
 
 export type TSubject = Triple['Subject'];

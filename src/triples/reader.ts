@@ -48,7 +48,8 @@ function predicate(content: string) {
 
 function object(content: string) {
   return verify<TObject>(
-      content, unWrap(Rdfs.Parse), unWrap(UrlNode.Parse), SchemaString.Parse);
+      content, unWrap(Rdfs.Parse), unWrap(UrlNode.Parse), SchemaString.Parse,
+      BlankNode.Parse);
 }
 const totalRegex =
     /\s*((?:<[^<>]+>)|(?:_:\w+\b))\s*<([^<>]+)>\s*((?:<[^<>"]+>)|(?:_:\w+\b)|(?:"(?:[^"]|(?:\\"))+(?:[^\"]|\\")"(?:@[a-zA-Z]+)?))\s*\./;

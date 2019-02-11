@@ -114,7 +114,8 @@ export function IsType(predicate: TPredicate): boolean {
  */
 export function GetType(value: ObjectPredicate): TTypeName|null {
   if (IsType(value.Predicate)) {
-    if (value.Object.type === 'Rdfs' || value.Object.type === 'SchemaString') {
+    if (value.Object.type === 'Rdfs' || value.Object.type === 'SchemaString' ||
+        value.Object.type === 'BlankNode') {
       throw new Error(`Unexpected type ${value.Object}`);
     }
     return value.Object;

@@ -64,8 +64,8 @@ export function GetSubClassOf(value: ObjectPredicate): {subClassOf: TSubject}|
 }
 
 /** Returns true iff a node corresponds to http://schema.org/DataType */
-export function IsDataType(t: TTypeName): boolean {
-  return IsSchemaObject(t) && t.name === 'DataType';
+export function IsDataType(t: TSubject): boolean {
+  return t.type === 'UrlNode' && IsSchemaObject(t) && t.name === 'DataType';
 }
 
 /** Returns true iff a Topic represents a non-DataType class. */

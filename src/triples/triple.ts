@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {Rdfs, SchemaString, UrlNode} from './types';
+import {BlankNode, Rdfs, SchemaString, UrlNode} from './types';
 
 /** Represents a parsed Subject-Predicate-Object statement. */
 export interface Triple {
-  readonly Subject: UrlNode;
+  readonly Subject: UrlNode|BlankNode;
   readonly Predicate: UrlNode;
   readonly Object: UrlNode|SchemaString|Rdfs;
 }
@@ -57,7 +57,7 @@ export interface TypedTopic extends Topic {
 /** Compact Human-readable format of a Triple of ObjectPredicate. */
 export function Format(o: Triple|ObjectPredicate): string {
   return ((o as Triple).Subject) ?
-      `(${(o as Triple).Subject.name}, ${o.Predicate.name}, ${
+      `(${(o as Triple).Subject.toHumanString()}, ${o.Predicate.name}, ${
           o.Object.toString()})` :
       `(${o.Predicate.name}, ${o.Object.toString()})`;
 }

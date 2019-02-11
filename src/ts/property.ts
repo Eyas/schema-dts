@@ -66,8 +66,8 @@ export class PropertyType {
     if (IsDomainIncludes(value.Predicate)) {
       const cls = classes.get(value.Object.toString());
       if (!cls) {
-        throw new Error(
-            `Could not find class for ${this.subject.name}, ${Format(value)}.`);
+        throw new Error(`Could not find class for ${
+            this.subject.toHumanString()}, ${Format(value)}.`);
       }
       cls.addProp(new Property(this.subject, this));
       return true;

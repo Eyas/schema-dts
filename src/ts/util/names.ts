@@ -16,7 +16,15 @@
 import {TObject, TSubject} from '../../triples/triple';
 
 export function toClassName(subject: TSubject): string {
-  return subject.name;
+  switch (subject.type) {
+    case 'UrlNode':
+      return subject.name;
+    case 'BlankNode':
+      throw new Error(
+          `Did not expect a BlankNode to be a Class. ${subject.id}`);
+    default:
+      throw new Error(`Unrecognized ${JSON.stringify(subject)}`);
+  }
 }
 
 export function toTypeName(object: TObject): string {
@@ -33,5 +41,13 @@ export function toTypeName(object: TObject): string {
 }
 
 export function toEnumName(subject: TSubject): string {
-  return (subject.name).replace(/[^A-Za-z0-9_]/g, '_');
+  switch (subject.type) {
+    case 'UrlNode':
+      return (subject.name).replace(/[^A-Za-z0-9_]/g, '_');
+    case 'BlankNode':
+      throw new Error(
+          `Did not expect a BlankNode to be a Class. ${subject.id}`);
+    default:
+      throw new Error(`Unrecognized ${JSON.stringify(subject)}`);
+  }
 }

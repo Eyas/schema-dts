@@ -18,8 +18,8 @@ import {Observable, Subscriber, TeardownLogic} from 'rxjs';
 
 import {Log} from '../logging';
 
-import {TObject, Triple} from './triple';
-import {Rdfs, SchemaString, UrlNode} from './types';
+import {TObject, Triple, TSubject} from './triple';
+import {BlankNode, Rdfs, SchemaString, UrlNode} from './types';
 
 function verify<T>(
     content: string, ...rest: Array<(content: string) => T | null>): T {
@@ -39,7 +39,7 @@ function unWrap<T>(maker: (content: string) => T | null): (content: string) =>
 }
 
 function subject(content: string) {
-  return UrlNode.Parse(content);
+  return verify<TSubject>(content, BlankNode.Parse, unWrap(UrlNode.Parse));
 }
 
 function predicate(content: string) {
@@ -51,7 +51,8 @@ function object(content: string) {
       content, unWrap(Rdfs.Parse), unWrap(UrlNode.Parse), SchemaString.Parse);
 }
 const totalRegex =
-    /\s*<([^<>]+)>\s*<([^<>]+)>\s*((?:<[^<>"]+>)|(?:"(?:[^"]|(?:\\"))+(?:[^\"]|\\")"(?:@[a-zA-Z]+)?))\s*\./;
+    /\s*((?:<[^<>]+>)|(?:_:\w+\b))\s*<([^<>]+)>\s*((?:<[^<>"]+>)|(?:_:\w+\b)|(?:"(?:[^"]|(?:\\"))+(?:[^\"]|\\")"(?:@[a-zA-Z]+)?))\s*\./;
+
 export function toTripleStrings(data: string[]) {
   const linearTriples = data.join('')
                             .split(totalRegex)

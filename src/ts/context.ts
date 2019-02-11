@@ -54,8 +54,9 @@ export class Context {
 
   getScopedName(node: TSubject): string {
     for (const [name, url] of this.context) {
-      if (node.matchesContext(url)) {
-        return name === '' ? node.name : `${name}:${node.name}`;
+      const match = node.matchContext(url);
+      if (match !== null) {
+        return name === '' ? match : `${name}:${match}`;
       }
     }
     return node.toString();

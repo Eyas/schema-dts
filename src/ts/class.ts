@@ -108,8 +108,8 @@ export class Class {
         this.parents.push(parentClass);
         parentClass.children.push(this);
       } else {
-        throw new Error(`Couldn't find parent of ${this.subject.name}, ${
-            s.subClassOf.toString()}`);
+        throw new Error(`Couldn't find parent of ${
+            this.subject.toHumanString()}, ${s.subClassOf.toString()}`);
       }
       return true;
     }
@@ -119,7 +119,7 @@ export class Class {
       if (!supersededBy) {
         throw new Error(`Couldn't find class ${
             value.Object.toString()}, which supersedes class ${
-            this.subject.name}`);
+            this.subject.toHumanString()}`);
       }
       this._supersededBy.push(supersededBy);
       return true;
@@ -256,14 +256,14 @@ export class Builtin extends Class {
           createTypeAliasDeclaration(
               /*decorators=*/[],
               createModifiersFromModifierFlags(ModifierFlags.Export),
-              this.subject.name,
+              this.baseName(),
               /*typeParameters=*/[],
               createTypeReferenceNode(this.equivTo, []))),
     ];
   }
 
   protected baseName() {
-    return this.subject.name;
+    return (this.subject as UrlNode /* Just Constructed */).name;
   }
 }
 export class BooleanEnum extends Builtin {
@@ -279,7 +279,7 @@ export class BooleanEnum extends Builtin {
         createEnumDeclaration(
             /*decotrators=*/[],
             createModifiersFromModifierFlags(ModifierFlags.Export),
-            this.subject.name, [
+            this.baseName(), [
               createEnumMember('True', createStringLiteral(this.trueUrl)),
               createEnumMember('False', createStringLiteral(this.falseUrl)),
             ]))];
@@ -295,7 +295,7 @@ export class BooleanEnum extends Builtin {
 export function Sort(a: Class, b: Class): number {
   if (a instanceof Builtin) {
     if (b instanceof Builtin) {
-      return a.subject.name.localeCompare(b.subject.name);
+      return a.subject.toHumanString().localeCompare(b.subject.toHumanString());
     } else {
       return -1;
     }
@@ -307,8 +307,8 @@ export function Sort(a: Class, b: Class): number {
 }
 
 function CompareKeys(a: TSubject, b: TSubject): number {
-  const byName = a.name.localeCompare(b.name);
+  const byName = a.toHumanString().localeCompare(b.toHumanString());
   if (byName !== 0) return byName;
 
-  return a.href.localeCompare(b.href);
+  return a.toString().localeCompare(b.toString());
 }

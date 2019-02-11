@@ -40,7 +40,7 @@ export function ProcessProperties(
     }
     // Go over RangeIncludes or DomainIncludes:
     if (rest.length > 0) {
-      Log(`Still unadded for property: ${topic.Subject.name}:\n\t${
+      Log(`Still unadded for property: ${topic.Subject.toHumanString()}:\n\t${
           rest.map(Format).join('\n\t')}`);
     }
   }

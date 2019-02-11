@@ -40,7 +40,8 @@ export function ProcessEnums(
     }
 
     if (skipped.length > 0) {
-      Log(`For Enum Item ${topic.Subject.name}, did not process:\n\t${
+      Log(`For Enum Item ${
+          topic.Subject.toHumanString()}, did not process:\n\t${
           skipped.map(Format).join('\n\t')}`);
     }
   }

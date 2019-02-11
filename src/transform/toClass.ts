@@ -27,7 +27,7 @@ function toClass(cls: Class, topic: Topic, map: ClassMap): Class {
   }
 
   if (rest.length > 0) {
-    Log(`Class ${cls.subject.name}: Did not add [${
+    Log(`Class ${cls.subject.toHumanString()}: Did not add [${
         rest.map(r => `(${r.Predicate.name} ${r.Object.toString()})`)
             .join(',')}]`);
   }

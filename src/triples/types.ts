@@ -45,7 +45,8 @@ function pathEqual(
 
 /**
  * In-memory representation of a node in a Triple corresponding to a URL.
- * @example <http://schema.org/domainIncludes>
+ * @example
+ * <http://schema.org/domainIncludes>
  */
 export class UrlNode {
   readonly type = 'UrlNode';
@@ -57,7 +58,11 @@ export class UrlNode {
     return this.href;
   }
 
-  matchesContext(contextString: string): boolean {
+  toHumanString() {
+    return this.name;
+  }
+
+  matchContext(contextString: string): string|null {
     const context = fromString(contextString);
     if (this.context.protocol !== context.protocol) {
       // Schema.org schema uses 'http:' as protocol, but increasingly Schema.org
@@ -68,13 +73,17 @@ export class UrlNode {
       if (this.context.protocol === 'http:' && context.protocol === 'https:') {
         // Ignore.
       } else {
-        return false;
+        return null;
       }
     }
 
-    return this.context.hostname === context.hostname &&
+    if (this.context.hostname === context.hostname &&
         pathEqual(this.context.path, context.path) &&
-        this.context.search === context.search;
+        this.context.search === context.search) {
+      return this.name;
+    }
+
+    return null;
   }
 
   static Parse(urlString: string): UrlNode {
@@ -104,10 +113,42 @@ export class UrlNode {
 }
 
 /**
+ * In-memory representation of a blank-node in a Triple corresponding to an
+ * inline-declared concept.
+ * @example
+ * _:b33f
+ */
+export class BlankNode {
+  readonly type = 'BlankNode';
+  constructor(readonly id: string) {}
+
+  toString() {
+    return `_:${this.id}`;
+  }
+
+  toHumanString() {
+    return this.toString();  // BlankNodes are machine-y by default.
+  }
+
+  static Parse(content: string): BlankNode|null {
+    if (!content.startsWith('_:')) {
+      return null;
+    }
+
+    return new BlankNode(content.substr(2));
+  }
+
+  matchContext(): null {
+    return null;
+  }
+}
+/**
  * In-memory representation of a node in a Triple corresponding to a string
  * literal.
- * @example "BodyOfWater"
- * @example "BodyOfWater"@en
+ * @example
+ * "BodyOfWater"
+ * @example
+ * "BodyOfWater"@en
  */
 export class SchemaString {
   readonly type = 'SchemaString';
@@ -128,7 +169,8 @@ export class SchemaString {
 /**
  * In-memory representation of a compact Node corresponding to a relative RDFS
  * reference.
- * @example <rdfs:label>
+ * @example
+ * <rdfs:label>
  */
 export class Rdfs {
   readonly type = 'Rdfs';

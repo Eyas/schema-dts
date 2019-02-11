@@ -52,7 +52,7 @@ function object(content: string) {
       BlankNode.Parse);
 }
 const totalRegex =
-    /\s*((?:<[^<>]+>)|(?:_:\w+\b))\s*<([^<>]+)>\s*((?:<[^<>"]+>)|(?:_:\w+\b)|(?:"(?:[^"]|(?:\\"))+(?:[^\"]|\\")"(?:@[a-zA-Z]+)?))\s*\./;
+    /\s*((?:<[^<>]+>)|(?:_:\w+\b))\s*<([^<>]+)>\s*((?:<[^<>"]+>)|(?:_:\w+\b)|(?:"(?:[^"]|(?:\\"))*"(?:@[a-zA-Z]+)?))\s*\./;
 
 export function toTripleStrings(data: string[]) {
   const linearTriples = data.join('')

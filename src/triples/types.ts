@@ -155,7 +155,7 @@ export class SchemaString {
                            `"${this.value}"`;
   }
   static Parse(content: string): SchemaString|null {
-    const result = /^"(([^"]|(\\"))+)"(?:@([a-zA-Z]+))?$/.exec(content);
+    const result = /^"(([^"]|(\\"))*)"(?:@([a-zA-Z]+))?$/.exec(content);
     if (result) {
       return new SchemaString(result[1].replace(/\\"/g, '"'), result[4]);
     }

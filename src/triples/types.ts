@@ -149,15 +149,21 @@ export class BlankNode {
  */
 export class SchemaString {
   readonly type = 'SchemaString';
-  constructor(readonly value: string, readonly language: string|undefined) {}
+  constructor(
+      readonly value: string, readonly language: string|undefined,
+      readonly dataType: string|undefined) {}
   toString() {
-    return this.language ? `"${this.value}@${this.language}` :
-                           `"${this.value}"`;
+    const base = `"${this.value}`;
+    const lang = this.language ? `@${this.language}` : '';
+    const type = this.dataType ? `^^<${this.dataType}>` : '';
+    return `${base}${lang}${type}`;
   }
   static Parse(content: string): SchemaString|null {
-    const result = /^"(([^"]|(\\"))*)"(?:@([a-zA-Z]+))?$/.exec(content);
+    const result =
+        /^"(([^"]|(\\"))*)"(?:@([a-zA-Z]+))?(?:\^\^<([^<>]+)>)?$/.exec(content);
     if (result) {
-      return new SchemaString(result[1].replace(/\\"/g, '"'), result[4]);
+      return new SchemaString(
+          result[1].replace(/\\"/g, '"'), result[4], result[5]);
     }
     return null;
   }

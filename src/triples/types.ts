@@ -51,7 +51,7 @@ function pathEqual(
 export class UrlNode {
   readonly type = 'UrlNode';
   constructor(
-      readonly name: string, readonly context: ReadonlyUrl,
+      readonly name: string|null, readonly context: ReadonlyUrl,
       readonly href: string) {}
 
   toString() {
@@ -59,7 +59,7 @@ export class UrlNode {
   }
 
   toHumanString() {
-    return this.name;
+    return this.name || this.href;
   }
 
   matchContext(contextString: string): string|null {
@@ -102,10 +102,7 @@ export class UrlNode {
     }
 
     const split = url.pathname.split('/');
-    const name = split.pop();
-    if (!name) {
-      throw new Error(`Unexpected URL ${url.href} with no room for 'name'.`);
-    }
+    const name = split.pop() || null;
     const context = url.origin + split.join('/');
 
     return new UrlNode(name, fromString(context), url.href);

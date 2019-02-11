@@ -14,11 +14,19 @@
  * limitations under the License.
  */
 import {TObject, TSubject} from '../../triples/triple';
+import {UrlNode} from '../../triples/types';
+
+function nameFromUrl(node: UrlNode): string {
+  if (node.name === null) {
+    throw new Error(`URL required for node ${node.href}.`);
+  }
+  return node.name;
+}
 
 export function toClassName(subject: TSubject): string {
   switch (subject.type) {
     case 'UrlNode':
-      return subject.name;
+      return nameFromUrl(subject);
     case 'BlankNode':
       throw new Error(
           `Did not expect a BlankNode to be a Class. ${subject.id}`);
@@ -43,7 +51,7 @@ export function toTypeName(object: TObject): string {
 export function toEnumName(subject: TSubject): string {
   switch (subject.type) {
     case 'UrlNode':
-      return (subject.name).replace(/[^A-Za-z0-9_]/g, '_');
+      return nameFromUrl(subject).replace(/[^A-Za-z0-9_]/g, '_');
     case 'BlankNode':
       throw new Error(
           `Did not expect a BlankNode to be a Class. ${subject.id}`);

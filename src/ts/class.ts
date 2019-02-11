@@ -263,7 +263,7 @@ export class Builtin extends Class {
   }
 
   protected baseName() {
-    return (this.subject as UrlNode /* Just Constructed */).name;
+    return (this.subject as UrlNode /* Just Constructed */).name!;
   }
 }
 export class BooleanEnum extends Builtin {
